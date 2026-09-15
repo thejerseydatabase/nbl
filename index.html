@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>document.documentElement.setAttribute("data-theme", localStorage.getItem("jerseydb-theme") || "dark");</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="A fan-made tracker of jerseys worn in NBL matches. Browse match results and jerseys by team, season, jersey, stadium, round, and theme.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E8B84B' stroke-width='2'%3E%3Cpath d='M4 5l4-2 4 2 4-2 4 2v3l-3 1v11H7V9L4 8z'/%3E%3C/svg%3E">
+<title>NBL Jersey Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.46.0/tabler-icons.min.css">
+<style>
+  :root{
+    --bg:#0B1F17; --surface:#12271D; --surface-2:#1B3A2A; --line:#264536;
+    --text:#F2F6EF; --text-dim:#8FAA98; --text-dim2:#5E7B69; --accent:#E8B84B;
+    --win:#5FB88A; --loss:#D9705C; --draw:#E8C15A;
+  }
+
+  :root[data-theme="light"]{
+    --bg:#F4F1E9;
+    --surface:#FFFFFF;
+    --surface-2:#ECE6D8;
+    --line:#D9D0BC;
+    --text:#1C2B21;
+    --text-dim:#5C6F60;
+    --text-dim2:#8B9A8E;
+    --accent:#A67C00;
+    --win:#2F8F57;
+    --loss:#C1503D;
+    --draw:#B8860B;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;}
+  a{color:inherit;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px;}
+
+  .hero{position:relative;padding:56px 20px 40px;text-align:center;overflow:hidden;border-bottom:1px solid var(--line);margin-bottom:28px;}
+  .back-to-hub{position:absolute;top:16px;left:20px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.05em;color:var(--text-dim);text-decoration:none;z-index:5;}
+  .back-to-hub:hover{color:var(--accent);}
+  .hero-circle{position:absolute;top:50%;left:50%;width:520px;height:520px;border:1px solid rgba(242,246,239,0.06);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;}
+  .hero-glow{position:absolute;top:-180px;left:50%;width:640px;height:400px;transform:translateX(-50%);background:radial-gradient(ellipse at center, rgba(232,184,75,0.16), transparent 70%);pointer-events:none;animation:glow 6s ease-in-out infinite;}
+  @media (prefers-reduced-motion:reduce){ .hero-glow{animation:none;} }
+  @keyframes glow{ 0%,100%{opacity:.7} 50%{opacity:1} }
+  .eyebrow{position:relative;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.18em;color:var(--accent);text-transform:uppercase;margin:0 0 14px;}
+  .hero h1{position:relative;font-family:'Anton',sans-serif;font-weight:400;font-size:clamp(32px,6vw,54px);letter-spacing:.01em;text-transform:uppercase;line-height:1.02;margin:0 0 14px;}
+  .stat-line{position:relative;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text-dim);margin:0;}
+  .stat-line b{color:var(--text);font-weight:600;}
+
+  .mode-toggle{display:flex;gap:8px;margin-bottom:16px;}
+  .mode-toggle button{flex:1;padding:11px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-family:'Inter',sans-serif;font-size:13.5px;font-weight:500;cursor:pointer;}
+  .mode-toggle button.active{border-color:var(--accent);color:var(--accent);background:var(--surface-2);}
+
+  .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px;}
+  .h2h-row{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:12px;}
+  .filters select, .h2h-row select, .filters input{
+    background:var(--surface);border:1px solid var(--line);color:var(--text);
+    font-family:'Inter',sans-serif;font-size:13.5px;padding:10px 12px;border-radius:8px;outline:none;width:100%;
+  }
+  .filters select:focus, .h2h-row select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,184,75,0.15);}
+  .vs-sep{font-family:'Anton',sans-serif;color:var(--text-dim);font-size:16px;}
+  .clear-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;}
+  .clear-row button{background:none;border:none;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:11.5px;text-decoration:underline;cursor:pointer;padding:4px;}
+  .clear-row button:hover{color:var(--accent);}
+  .trial-toggle{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-dim);cursor:pointer;user-select:none;}
+  .trial-toggle input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;}
+
+  .jersey-stats{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px 20px 8px;margin-bottom:20px;}
+  .stats-toggle{
+    width:100%;display:flex;align-items:center;justify-content:space-between;
+    background:none;border:none;padding:0;margin:0;cursor:pointer;
+    font-family:'Anton',sans-serif;font-weight:400;font-size:15px;text-transform:uppercase;
+    letter-spacing:.02em;color:var(--text-dim);
+  }
+  .stats-toggle .ti{font-size:16px;transition:transform .15s ease;}
+  .stats-toggle.open .ti{transform:rotate(180deg);}
+  .stats-toggle:hover{color:var(--text);}
+  .stats-body{margin-top:14px;}
+  .jersey-stats table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .jersey-stats th{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.05em;color:var(--text-dim2);text-transform:uppercase;text-align:center;padding:6px 4px;border-bottom:1px solid var(--line);}
+  .jersey-stats th:first-child{text-align:left;}
+  .jersey-stats td{text-align:center;padding:7px 4px;border-bottom:1px solid var(--line);font-family:'IBM Plex Mono',monospace;}
+  .jersey-stats td:first-child{text-align:left;font-family:'Inter',sans-serif;font-weight:600;font-size:12px;}
+  .jersey-stats tr.total-row td{color:var(--text);font-weight:600;background:var(--surface-2);}
+  .jersey-stats td.gd-pos{color:var(--win);}
+  .jersey-stats td.gd-neg{color:var(--loss);}
+
+  .matchup{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:32px 24px 24px;margin-bottom:20px;scroll-margin-top:20px;}
+  .matchup-grid{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px;}
+  .jersey-slot{text-align:center;min-width:0;}
+  .jersey-photo{width:130px;height:170px;margin:0 auto 14px;border-radius:14px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--line);}
+  .jersey-photo.has-image{background:#fff;border-color:#fff;}
+  .jersey-photo img{width:100%;height:100%;object-fit:contain;display:block;}
+  .jersey-photo .ti{font-size:34px;color:var(--text-dim2);}
+  .jersey-photo.empty{border-style:dashed;}
+  .no-photo-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.05em;color:var(--text-dim2);text-transform:uppercase;margin:0 0 8px;min-height:12px;}
+  .team-name{font-family:'Anton',sans-serif;font-weight:400;font-size:18px;text-transform:uppercase;letter-spacing:.01em;margin:0 0 4px;overflow-wrap:break-word;}
+  .jersey-tag{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin:0;}
+  .score-block{text-align:center;padding:0 6px;}
+  .score-tiles{display:flex;align-items:center;gap:8px;justify-content:center;}
+  .tile{background:#0D1F16;border:1px solid var(--line);border-radius:8px;width:44px;height:56px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:24px;color:var(--accent);box-shadow:inset 0 2px 4px rgba(0,0,0,0.4);}
+  .tile.win{color:var(--win);border-color:rgba(95,184,138,0.4);}
+  .tile.loss{color:var(--loss);border-color:rgba(217,112,92,0.4);}
+  .tile-sep{color:var(--text-dim2);font-family:'IBM Plex Mono',monospace;font-size:20px;}
+  .vs-label{font-family:'Anton',sans-serif;font-size:24px;color:var(--text-dim);}
+  .ft-label{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--text-dim2);text-transform:uppercase;margin:10px 0 0;}
+  .meta-ticker{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-dim);text-align:center;border-top:1px solid var(--line);margin-top:22px;padding-top:14px;letter-spacing:.02em;line-height:1.8;}
+  .notes-line{margin:8px 0 0;font-style:italic;color:var(--text-dim2);font-size:11px;}
+
+  .list-wrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .list-head, .row{display:grid;grid-template-columns:70px 96px 1fr 30px 12px 30px 1fr 96px 56px;gap:6px;align-items:center;}
+  .list-head{padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.05em;color:var(--text-dim2);text-transform:uppercase;background:var(--surface);border-bottom:1px solid var(--line);}
+  .list-head span:nth-child(3), .list-head span:nth-child(5){text-align:center;}
+  .row{padding:9px 14px;background:var(--surface);border-bottom:1px solid var(--line);cursor:pointer;font-size:13px;transition:background .12s ease;}
+  .row:last-child{border-bottom:none;}
+  .row:hover{background:var(--surface-2);}
+  .row.active{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--accent);}
+  .row .c-date{font-family:'IBM Plex Mono',monospace;color:var(--text-dim);font-size:11px;white-space:nowrap;}
+  .jcode{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--text-dim);background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:3px 4px;text-align:center;cursor:help;white-space:normal;word-break:break-word;line-height:1.25;align-self:stretch;display:flex;align-items:center;justify-content:center;}
+  .row .c-home{text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
+  .row .c-away{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
+  .result-win{color:var(--win);}
+  .result-loss{color:var(--loss);}
+  .row .c-hs, .row .c-as{font-family:'IBM Plex Mono',monospace;font-size:13px;text-align:center;color:var(--text);}
+  .c-dash{color:var(--text-dim2);text-align:center;font-size:11px;}
+  .row .c-round{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-dim);text-align:center;}
+  .no-results{padding:32px 16px;text-align:center;color:var(--text-dim);font-size:13.5px;}
+  .list-scroll{max-height:640px;overflow-y:auto;}
+
+  @media (max-width:760px){
+    .list-head, .row{grid-template-columns:60px 1fr 24px 10px 24px 1fr;}
+    .list-head span:nth-child(2), .list-head span:nth-child(8), .list-head span:nth-child(9),
+    .row .c-hjersey, .row .c-ajersey, .row .c-round{display:none;}
+    .list-head span:nth-child(7), .row .c-round{display:none;}
+  }
+  @media (max-width:600px){
+    .matchup-grid{grid-template-columns:1fr;gap:16px;}
+    .score-block{order:-1;}
+    .filters{grid-template-columns:repeat(2,1fr);}
+  }
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  .theme-toggle{
+    position:absolute;top:16px;right:20px;z-index:5;
+    background:var(--surface);border:1px solid var(--line);border-radius:8px;
+    color:var(--text-dim);width:34px;height:34px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:16px;padding:0;
+  }
+  .theme-toggle:hover{color:var(--accent);border-color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle light/dark mode" title="Toggle light/dark mode"><i class="ti ti-moon"></i></button>
+    <a href="https://thejerseydatabase.com" class="back-to-hub">&larr; All Sports</a>
+    <div class="hero-glow"></div>
+    <div class="hero-circle"></div>
+    <p class="eyebrow">NBL Jersey Tracker</p>
+    <h1>Every jersey.<br>Every era.</h1>
+    <p class="stat-line"><b id="total-count">0</b> matches logged &middot; <b id="season-range"></b> &middot; <b id="kit-count">0</b> with a jersey photo added</p>
+    <p class="stat-line" id="data-status" style="margin-top:6px;">Loading data&hellip;</p>
+  </header>
+
+  <div class="mode-toggle">
+    <button id="mode-browse" class="active">Browse</button>
+    <button id="mode-h2h">Head to head</button>
+  </div>
+
+  <div id="browse-filters" class="filters">
+    <select id="f-team" aria-label="Team"><option value="">Any team</option></select>
+    <select id="f-season" aria-label="Season"><option value="">Any season</option></select>
+    <select id="f-jersey" aria-label="Jersey"><option value="">Any jersey</option></select>
+    <select id="f-round" aria-label="Round"><option value="">Any round</option></select>
+    <select id="f-theme" aria-label="Match theme"><option value="">Any theme</option></select>
+    <select id="f-stadium" aria-label="Stadium"><option value="">Any stadium</option></select>
+  </div>
+
+  <div id="h2h-filters" class="h2h-row" style="display:none;">
+    <select id="f-teamA" aria-label="Team A"></select>
+    <span class="vs-sep">VS</span>
+    <select id="f-teamB" aria-label="Team B"></select>
+  </div>
+
+  <div class="clear-row">
+    <label class="trial-toggle"><input type="checkbox" id="hide-trial" checked> Hide trial matches</label>
+    <button id="clear-filters">Clear all filters</button>
+  </div>
+
+  <section class="jersey-stats" id="jersey-stats" hidden></section>
+
+  <section class="matchup" id="matchup"></section>
+
+  <section class="list-wrap">
+    <div class="list-head">
+      <span>Date</span><span>Jersey</span><span style="text-align:right">Home</span><span>HS</span><span></span><span>AS</span><span>Away</span><span>Jersey</span><span style="text-align:center">Round</span>
+    </div>
+    <div class="list-scroll"><div id="list"></div></div>
+  </section>
+
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid var(--line);text-align:center;">
+    <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim2);line-height:1.7;">
+      A fan-made project tracking jerseys worn in NBL matches.<br>
+      Not a store &mdash; no products are sold here. Not affiliated with the NBL or any club.<br>
+      Images may not reflect exactly what was worn on the field. It is merely a reference photo.<br>
+      <a href="https://thejerseydatabase.com/contact.html" style="color:var(--accent);text-decoration:none;">Contact</a> &middot;
+      <a href="https://thejerseydatabase.com/sources.html" style="color:var(--accent);text-decoration:none;">Sources</a> &middot;
+      <a href="https://thejerseydatabase.com/updates.html" style="color:var(--accent);text-decoration:none;">Updates</a>
+    </p>
+  </footer>
+</div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ08TkUylQQxxG8ZeRcgr9xfZj6-QFTQjpuyVOQ3zk-JC7ds2voYMjHnppKIgsYKUp4V0m8aOOK06Gr/pub?gid=1341638788&single=true&output=csv";
+
+let MATCHES = [{"matchId": 1, "comp": "NBL", "season": "2026/27", "date": "2026-09-19", "round": "1", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 2, "comp": "NBL", "season": "2026/27", "date": "2026-09-19", "round": "1", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 3, "comp": "NBL", "season": "2026/27", "date": "2026-09-20", "round": "1", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "Spark Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 4, "comp": "NBL", "season": "2026/27", "date": "2026-09-20", "round": "1", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 5, "comp": "NBL", "season": "2026/27", "date": "2026-09-21", "round": "1", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 6, "comp": "NBL", "season": "2026/27", "date": "2026-09-22", "round": "1", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "Pat Rafter Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 7, "comp": "NBL", "season": "2026/27", "date": "2026-09-23", "round": "2", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "Cairns Convention Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 8, "comp": "NBL", "season": "2026/27", "date": "2026-09-24", "round": "2", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 9, "comp": "NBL", "season": "2026/27", "date": "2026-09-24", "round": "2", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 10, "comp": "NBL", "season": "2026/27", "date": "2026-09-25", "round": "2", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "Brisbane Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 11, "comp": "NBL", "season": "2026/27", "date": "2026-09-26", "round": "2", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 12, "comp": "NBL", "season": "2026/27", "date": "2026-09-27", "round": "2", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 13, "comp": "NBL", "season": "2026/27", "date": "2026-09-27", "round": "2", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 14, "comp": "NBL", "season": "2026/27", "date": "2026-09-30", "round": "3", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "Spark Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 15, "comp": "NBL", "season": "2026/27", "date": "2026-09-30", "round": "3", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 16, "comp": "NBL", "season": "2026/27", "date": "2026-10-01", "round": "3", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 17, "comp": "NBL", "season": "2026/27", "date": "2026-10-02", "round": "3", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 18, "comp": "NBL", "season": "2026/27", "date": "2026-10-02", "round": "3", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 19, "comp": "NBL", "season": "2026/27", "date": "2026-10-03", "round": "3", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "Brisbane Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 20, "comp": "NBL", "season": "2026/27", "date": "2026-10-03", "round": "3", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 21, "comp": "NBL", "season": "2026/27", "date": "2026-10-04", "round": "3", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 22, "comp": "NBL", "season": "2026/27", "date": "2026-10-04", "round": "3", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 23, "comp": "NBL", "season": "2026/27", "date": "2026-10-07", "round": "4", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 24, "comp": "NBL", "season": "2026/27", "date": "2026-10-08", "round": "4", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "Cairns Convention Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 25, "comp": "NBL", "season": "2026/27", "date": "2026-10-09", "round": "4", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 26, "comp": "NBL", "season": "2026/27", "date": "2026-10-10", "round": "4", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 27, "comp": "NBL", "season": "2026/27", "date": "2026-10-10", "round": "4", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 28, "comp": "NBL", "season": "2026/27", "date": "2026-10-11", "round": "4", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 29, "comp": "NBL", "season": "2026/27", "date": "2026-10-11", "round": "4", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 30, "comp": "NBL", "season": "2026/27", "date": "2026-10-14", "round": "5", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "AIS Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 31, "comp": "NBL", "season": "2026/27", "date": "2026-10-15", "round": "5", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "Brisbane Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 32, "comp": "NBL", "season": "2026/27", "date": "2026-10-16", "round": "5", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 33, "comp": "NBL", "season": "2026/27", "date": "2026-10-17", "round": "5", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 34, "comp": "NBL", "season": "2026/27", "date": "2026-10-17", "round": "5", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 35, "comp": "NBL", "season": "2026/27", "date": "2026-10-18", "round": "5", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 36, "comp": "NBL", "season": "2026/27", "date": "2026-10-18", "round": "5", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 37, "comp": "NBL", "season": "2026/27", "date": "2026-10-21", "round": "6", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 38, "comp": "NBL", "season": "2026/27", "date": "2026-10-22", "round": "6", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 39, "comp": "NBL", "season": "2026/27", "date": "2026-10-23", "round": "6", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 40, "comp": "NBL", "season": "2026/27", "date": "2026-10-24", "round": "6", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 41, "comp": "NBL", "season": "2026/27", "date": "2026-10-24", "round": "6", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 42, "comp": "NBL", "season": "2026/27", "date": "2026-10-25", "round": "6", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "Cairns Convention Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 43, "comp": "NBL", "season": "2026/27", "date": "2026-10-25", "round": "6", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 44, "comp": "NBL", "season": "2026/27", "date": "2026-10-28", "round": "7", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 45, "comp": "NBL", "season": "2026/27", "date": "2026-10-29", "round": "7", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "Brisbane Entertainment Centre", "theme": "Rookie Round", "overtime": null, "notes": null}, {"matchId": 46, "comp": "NBL", "season": "2026/27", "date": "2026-10-30", "round": "7", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "Spark Arena", "theme": "Rookie Round", "overtime": null, "notes": null}, {"matchId": 47, "comp": "NBL", "season": "2026/27", "date": "2026-10-30", "round": "7", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "Silverdome", "theme": "Rookie Round", "overtime": null, "notes": null}, {"matchId": 48, "comp": "NBL", "season": "2026/27", "date": "2026-10-31", "round": "7", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "Cairns Convention Centre", "theme": "Rookie Round", "overtime": null, "notes": null}, {"matchId": 49, "comp": "NBL", "season": "2026/27", "date": "2026-10-31", "round": "7", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "RAC Arena", "theme": "Rookie Round", "overtime": null, "notes": null}, {"matchId": 50, "comp": "NBL", "season": "2026/27", "date": "2026-11-01", "round": "7", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "John Cain Arena", "theme": "Rookie Round", "overtime": null, "notes": null}, {"matchId": 51, "comp": "NBL", "season": "2026/27", "date": "2026-11-01", "round": "7", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "Adelaide Entertainment Centre", "theme": "Rookie Round", "overtime": null, "notes": null}, {"matchId": 52, "comp": "NBL", "season": "2026/27", "date": "2026-11-02", "round": "7", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "John Cain Arena", "theme": "Rookie Round", "overtime": null, "notes": null}, {"matchId": 53, "comp": "NBL", "season": "2026/27", "date": "2026-11-04", "round": "8", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "Nissan Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 54, "comp": "NBL", "season": "2026/27", "date": "2026-11-05", "round": "8", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "Cairns Convention Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 55, "comp": "NBL", "season": "2026/27", "date": "2026-11-06", "round": "8", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "Silverdome", "theme": null, "overtime": null, "notes": null}, {"matchId": 56, "comp": "NBL", "season": "2026/27", "date": "2026-11-07", "round": "8", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 57, "comp": "NBL", "season": "2026/27", "date": "2026-11-07", "round": "8", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 58, "comp": "NBL", "season": "2026/27", "date": "2026-11-08", "round": "8", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 59, "comp": "NBL", "season": "2026/27", "date": "2026-11-08", "round": "8", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 60, "comp": "NBL", "season": "2026/27", "date": "2026-11-11", "round": "9", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "State Basketball Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 61, "comp": "NBL", "season": "2026/27", "date": "2026-11-12", "round": "9", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 62, "comp": "NBL", "season": "2026/27", "date": "2026-11-12", "round": "9", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 63, "comp": "NBL", "season": "2026/27", "date": "2026-11-13", "round": "9", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "Spark Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 64, "comp": "NBL", "season": "2026/27", "date": "2026-11-13", "round": "9", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "Cairns Convention Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 65, "comp": "NBL", "season": "2026/27", "date": "2026-11-14", "round": "9", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 66, "comp": "NBL", "season": "2026/27", "date": "2026-11-14", "round": "9", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 67, "comp": "NBL", "season": "2026/27", "date": "2026-11-15", "round": "9", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 68, "comp": "NBL", "season": "2026/27", "date": "2026-11-15", "round": "9", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "Brisbane Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 69, "comp": "NBL", "season": "2026/27", "date": "2026-11-18", "round": "10", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "Spark Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 70, "comp": "NBL", "season": "2026/27", "date": "2026-11-19", "round": "10", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "WIN Entertainment Centre", "theme": "Indigenous Round", "overtime": null, "notes": null}, {"matchId": 71, "comp": "NBL", "season": "2026/27", "date": "2026-11-20", "round": "10", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "Cairns Convention Centre", "theme": "Indigenous Round", "overtime": null, "notes": null}, {"matchId": 72, "comp": "NBL", "season": "2026/27", "date": "2026-11-21", "round": "10", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "MyState Bank Arena", "theme": "Indigenous Round", "overtime": null, "notes": null}, {"matchId": 73, "comp": "NBL", "season": "2026/27", "date": "2026-11-21", "round": "10", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "John Cain Arena", "theme": "Indigenous Round", "overtime": null, "notes": null}, {"matchId": 74, "comp": "NBL", "season": "2026/27", "date": "2026-11-22", "round": "10", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "John Cain Arena", "theme": "Indigenous Round", "overtime": null, "notes": null}, {"matchId": 75, "comp": "NBL", "season": "2026/27", "date": "2026-11-22", "round": "10", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "Brisbane Entertainment Centre", "theme": "Indigenous Round", "overtime": null, "notes": null}, {"matchId": 76, "comp": "NBL", "season": "2026/27", "date": "2026-12-02", "round": "11", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 77, "comp": "NBL", "season": "2026/27", "date": "2026-12-03", "round": "11", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "Brisbane Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 78, "comp": "NBL", "season": "2026/27", "date": "2026-12-04", "round": "11", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "Spark Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 79, "comp": "NBL", "season": "2026/27", "date": "2026-12-04", "round": "11", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 80, "comp": "NBL", "season": "2026/27", "date": "2026-12-05", "round": "11", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "Cairns Convention Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 81, "comp": "NBL", "season": "2026/27", "date": "2026-12-05", "round": "11", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 82, "comp": "NBL", "season": "2026/27", "date": "2026-12-06", "round": "11", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 83, "comp": "NBL", "season": "2026/27", "date": "2026-12-06", "round": "11", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 84, "comp": "NBL", "season": "2026/27", "date": "2026-12-09", "round": "12", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "To Be Confirmed", "theme": null, "overtime": null, "notes": null}, {"matchId": 85, "comp": "NBL", "season": "2026/27", "date": "2026-12-10", "round": "12", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 86, "comp": "NBL", "season": "2026/27", "date": "2026-12-11", "round": "12", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "Spark Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 87, "comp": "NBL", "season": "2026/27", "date": "2026-12-12", "round": "12", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "Cairns Convention Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 88, "comp": "NBL", "season": "2026/27", "date": "2026-12-12", "round": "12", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 89, "comp": "NBL", "season": "2026/27", "date": "2026-12-13", "round": "12", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 90, "comp": "NBL", "season": "2026/27", "date": "2026-12-13", "round": "12", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "Gippsland Regional Indoor Sports Stadium", "theme": null, "overtime": null, "notes": null}, {"matchId": 91, "comp": "NBL", "season": "2026/27", "date": "2026-12-16", "round": "13", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 92, "comp": "NBL", "season": "2026/27", "date": "2026-12-17", "round": "13", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "AIS Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 93, "comp": "NBL", "season": "2026/27", "date": "2026-12-18", "round": "13", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "To Be Confirmed", "theme": null, "overtime": null, "notes": null}, {"matchId": 94, "comp": "NBL", "season": "2026/27", "date": "2026-12-19", "round": "13", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 95, "comp": "NBL", "season": "2026/27", "date": "2026-12-19", "round": "13", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 96, "comp": "NBL", "season": "2026/27", "date": "2026-12-20", "round": "13", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 97, "comp": "NBL", "season": "2026/27", "date": "2026-12-20", "round": "13", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "Cairns Convention Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 98, "comp": "NBL", "season": "2026/27", "date": "2026-12-21", "round": "13", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 99, "comp": "NBL", "season": "2026/27", "date": "2026-12-22", "round": "13", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "Spark Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 100, "comp": "NBL", "season": "2026/27", "date": "2026-12-23", "round": "14", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 101, "comp": "NBL", "season": "2026/27", "date": "2026-12-24", "round": "14", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 102, "comp": "NBL", "season": "2026/27", "date": "2026-12-25", "round": "14", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 103, "comp": "NBL", "season": "2026/27", "date": "2026-12-26", "round": "14", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 104, "comp": "NBL", "season": "2026/27", "date": "2026-12-27", "round": "14", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 105, "comp": "NBL", "season": "2026/27", "date": "2026-12-27", "round": "14", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "Brisbane Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 106, "comp": "NBL", "season": "2026/27", "date": "2026-12-29", "round": "14", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 107, "comp": "NBL", "season": "2026/27", "date": "2026-12-30", "round": "15", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "Brisbane Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 108, "comp": "NBL", "season": "2026/27", "date": "2026-12-31", "round": "15", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 109, "comp": "NBL", "season": "2026/27", "date": "2026-12-31", "round": "15", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "Cairns Convention Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 110, "comp": "NBL", "season": "2026/27", "date": "2027-01-01", "round": "15", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 111, "comp": "NBL", "season": "2026/27", "date": "2027-01-02", "round": "15", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 112, "comp": "NBL", "season": "2026/27", "date": "2027-01-02", "round": "15", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 113, "comp": "NBL", "season": "2026/27", "date": "2027-01-03", "round": "15", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "Spark Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 114, "comp": "NBL", "season": "2026/27", "date": "2027-01-03", "round": "15", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "Brisbane Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 115, "comp": "NBL", "season": "2026/27", "date": "2027-01-04", "round": "15", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 116, "comp": "NBL", "season": "2026/27", "date": "2027-01-06", "round": "16", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "State Basketball Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 117, "comp": "NBL", "season": "2026/27", "date": "2027-01-06", "round": "16", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 118, "comp": "NBL", "season": "2026/27", "date": "2027-01-07", "round": "16", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "Red Energy Arena", "theme": "Pride Round", "overtime": null, "notes": null}, {"matchId": 119, "comp": "NBL", "season": "2026/27", "date": "2027-01-08", "round": "16", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "Spark Arena", "theme": "Pride Round", "overtime": null, "notes": null}, {"matchId": 120, "comp": "NBL", "season": "2026/27", "date": "2027-01-08", "round": "16", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "Brisbane Entertainment Centre", "theme": "Pride Round", "overtime": null, "notes": null}, {"matchId": 121, "comp": "NBL", "season": "2026/27", "date": "2027-01-09", "round": "16", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "Cairns Convention Centre", "theme": "Pride Round", "overtime": null, "notes": null}, {"matchId": 122, "comp": "NBL", "season": "2026/27", "date": "2027-01-09", "round": "16", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "Adelaide Entertainment Centre", "theme": "Pride Round", "overtime": null, "notes": null}, {"matchId": 123, "comp": "NBL", "season": "2026/27", "date": "2027-01-10", "round": "16", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "State Basketball Centre", "theme": "Pride Round", "overtime": null, "notes": null}, {"matchId": 124, "comp": "NBL", "season": "2026/27", "date": "2027-01-10", "round": "16", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "Qudos Bank Arena", "theme": "Pride Round", "overtime": null, "notes": null}, {"matchId": 125, "comp": "NBL", "season": "2026/27", "date": "2027-01-13", "round": "17", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "RAC Arena", "theme": "HoopsFest", "overtime": null, "notes": null}, {"matchId": 126, "comp": "NBL", "season": "2026/27", "date": "2027-01-14", "round": "17", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "RAC Arena", "theme": "HoopsFest", "overtime": null, "notes": null}, {"matchId": 127, "comp": "NBL", "season": "2026/27", "date": "2027-01-15", "round": "17", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "RAC Arena", "theme": "HoopsFest", "overtime": null, "notes": null}, {"matchId": 128, "comp": "NBL", "season": "2026/27", "date": "2027-01-16", "round": "17", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "RAC Arena", "theme": "HoopsFest", "overtime": null, "notes": null}, {"matchId": 129, "comp": "NBL", "season": "2026/27", "date": "2027-01-17", "round": "17", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "RAC Arena", "theme": "HoopsFest", "overtime": null, "notes": null}, {"matchId": 130, "comp": "NBL", "season": "2026/27", "date": "2027-01-20", "round": "18", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "Red Energy Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 131, "comp": "NBL", "season": "2026/27", "date": "2027-01-20", "round": "18", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 132, "comp": "NBL", "season": "2026/27", "date": "2027-01-21", "round": "18", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "State Basketball Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 133, "comp": "NBL", "season": "2026/27", "date": "2027-01-22", "round": "18", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 134, "comp": "NBL", "season": "2026/27", "date": "2027-01-22", "round": "18", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 135, "comp": "NBL", "season": "2026/27", "date": "2027-01-23", "round": "18", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 136, "comp": "NBL", "season": "2026/27", "date": "2027-01-23", "round": "18", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "Brisbane Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 137, "comp": "NBL", "season": "2026/27", "date": "2027-01-24", "round": "18", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "Spark Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 138, "comp": "NBL", "season": "2026/27", "date": "2027-01-24", "round": "18", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "State Basketball Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 139, "comp": "NBL", "season": "2026/27", "date": "2027-01-25", "round": "18", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 140, "comp": "NBL", "season": "2026/27", "date": "2027-01-27", "round": "19", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 141, "comp": "NBL", "season": "2026/27", "date": "2027-01-27", "round": "19", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "To Be Confirmed", "theme": null, "overtime": null, "notes": null}, {"matchId": 142, "comp": "NBL", "season": "2026/27", "date": "2027-01-28", "round": "19", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "Brisbane Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 143, "comp": "NBL", "season": "2026/27", "date": "2027-01-28", "round": "19", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 144, "comp": "NBL", "season": "2026/27", "date": "2027-01-29", "round": "19", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "Spark Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 145, "comp": "NBL", "season": "2026/27", "date": "2027-01-30", "round": "19", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 146, "comp": "NBL", "season": "2026/27", "date": "2027-01-30", "round": "19", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 147, "comp": "NBL", "season": "2026/27", "date": "2027-01-31", "round": "19", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "Cairns Convention Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 148, "comp": "NBL", "season": "2026/27", "date": "2027-01-31", "round": "19", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 149, "comp": "NBL", "season": "2026/27", "date": "2027-02-04", "round": "20", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "To Be Confirmed", "theme": null, "overtime": null, "notes": null}, {"matchId": 150, "comp": "NBL", "season": "2026/27", "date": "2027-02-04", "round": "20", "home": "Illawarra Hawks", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "WIN Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 151, "comp": "NBL", "season": "2026/27", "date": "2027-02-05", "round": "20", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Melbourne United", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 152, "comp": "NBL", "season": "2026/27", "date": "2027-02-05", "round": "20", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Cairns Taipans", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 153, "comp": "NBL", "season": "2026/27", "date": "2027-02-06", "round": "20", "home": "Brisbane Bullets", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "Brisbane Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 154, "comp": "NBL", "season": "2026/27", "date": "2027-02-06", "round": "20", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 155, "comp": "NBL", "season": "2026/27", "date": "2027-02-07", "round": "20", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "Spark Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 156, "comp": "NBL", "season": "2026/27", "date": "2027-02-07", "round": "20", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 157, "comp": "NBL", "season": "2026/27", "date": "2027-02-10", "round": "21", "home": "Tasmania Jackjumpers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Perth Wildcats", "stadium": "MyState Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 158, "comp": "NBL", "season": "2026/27", "date": "2027-02-11", "round": "21", "home": "New Zealand Breakers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sydney Kings", "stadium": "Spark Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 159, "comp": "NBL", "season": "2026/27", "date": "2027-02-11", "round": "21", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "S.E Melbourne United", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 160, "comp": "NBL", "season": "2026/27", "date": "2027-02-12", "round": "21", "home": "Cairns Taipans", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Adelaide 36ers", "stadium": "Cairns Convention Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 161, "comp": "NBL", "season": "2026/27", "date": "2027-02-12", "round": "21", "home": "Perth Wildcats", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "RAC Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 162, "comp": "NBL", "season": "2026/27", "date": "2027-02-13", "round": "21", "home": "Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Illawarra Hawks", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 163, "comp": "NBL", "season": "2026/27", "date": "2027-02-13", "round": "21", "home": "Sydney Kings", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tasmania Jackjumpers", "stadium": "Qudos Bank Arena", "theme": null, "overtime": null, "notes": null}, {"matchId": 164, "comp": "NBL", "season": "2026/27", "date": "2027-02-14", "round": "21", "home": "Adelaide 36ers", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "New Zealand Breakers", "stadium": "Adelaide Entertainment Centre", "theme": null, "overtime": null, "notes": null}, {"matchId": 165, "comp": "NBL", "season": "2026/27", "date": "2027-02-14", "round": "21", "home": "S.E Melbourne United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brisbane Bullets", "stadium": "John Cain Arena", "theme": null, "overtime": null, "notes": null}];
+
+function normalizeText(s){
+  return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+}
+
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i], next = text[i+1];
+    if(inQuotes){
+      if(c === '"' && next === '"'){ field += '"'; i++; }
+      else if(c === '"'){ inQuotes = false; }
+      else { field += c; }
+    } else {
+      if(c === '"'){ inQuotes = true; }
+      else if(c === ','){ row.push(field); field = ''; }
+      else if(c === '\n' || c === '\r'){
+        if(c === '\r' && next === '\n') i++;
+        row.push(field); field = '';
+        rows.push(row); row = [];
+      } else { field += c; }
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 1 || r[0] !== '');
+}
+
+// Match_ID, Competition, Season, Date, Round, Home Team, Home Jersey, Home Jersey Image URL, Home Score,
+// Away Score, Away Jersey, Away Jersey Image URL, Away Team, Stadium Name Used, Match Theme, Overtime, Notes
+function parseSheetDate(s){
+  if(!s) return null;
+  const d = new Date(s);
+  if(isNaN(d)) return null;
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function csvRowsToMatches(rows){
+  while(rows.length && rows[0].every(c => c === '')) rows.shift();
+  const [header, ...data] = rows;
+  return data
+    .filter(r => r[5] && r[5] !== 'Home Team')
+    .map(r => ({
+      matchId: parseInt(r[0]) || null,
+      comp: r[1] || null,
+      season: r[2] || null,
+      date: parseSheetDate(r[3]),
+      round: r[4] || null,
+      home: r[5],
+      homeJersey: r[6] || null,
+      homeImg: r[7] || null,
+      homeScore: r[8] === '' ? null : parseFloat(r[8]),
+      awayScore: r[9] === '' ? null : parseFloat(r[9]),
+      awayJersey: r[10] || null,
+      awayImg: r[11] || null,
+      away: r[12],
+      stadium: r[13] || null,
+      theme: r[14] || null,
+      overtime: r[15] || null,
+      notes: r[16] || null
+    }))
+    .sort((a,b) => (b.date||'').localeCompare(a.date||'') || (b.matchId - a.matchId));
+}
+
+async function loadLiveData(){
+  const statusEl = document.getElementById('data-status');
+  if(!CSV_URL){
+    statusEl.innerHTML = `<span style="color:var(--text-dim2)">&#9679;</span> Showing saved snapshot (live link not set up yet)`;
+    return;
+  }
+  try{
+    const res = await fetch(CSV_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    const live = csvRowsToMatches(rows);
+    if(live.length === 0) throw new Error('No rows parsed');
+    MATCHES = live;
+    populateFacets();
+    updateStatLine();
+    applyFilters();
+    const now = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+    statusEl.innerHTML = `<span style="color:var(--win)">&#9679;</span> Live data &mdash; updated ${now}`;
+  } catch(err){
+    statusEl.innerHTML = `<span style="color:var(--text-dim2)">&#9679;</span> Showing saved snapshot (live data unavailable right now)`;
+    console.warn('Live data fetch failed, using snapshot:', err);
+  }
+}
+
+// ---------- DOM refs ----------
+const listEl = document.getElementById('list');
+const matchupEl = document.getElementById('matchup');
+const statsEl = document.getElementById('jersey-stats');
+const modeBrowseBtn = document.getElementById('mode-browse');
+const modeH2hBtn = document.getElementById('mode-h2h');
+const browseFiltersEl = document.getElementById('browse-filters');
+const h2hFiltersEl = document.getElementById('h2h-filters');
+const fTeam = document.getElementById('f-team');
+const fSeason = document.getElementById('f-season');
+const fJersey = document.getElementById('f-jersey');
+const fRound = document.getElementById('f-round');
+const fTheme = document.getElementById('f-theme');
+const fStadium = document.getElementById('f-stadium');
+const fTeamA = document.getElementById('f-teamA');
+const fTeamB = document.getElementById('f-teamB');
+const clearBtn = document.getElementById('clear-filters');
+const hideTrial = document.getElementById('hide-trial');
+
+// Trial matches are marked by putting "Trial" (no number needed) in the Round column.
+function isTrialMatch(m){ return normalizeText(m.round) === 'trial'; }
+
+let mode = 'browse';
+let filtered = [];
+let activeIndex = 0;
+
+function fmtDate(d, short){
+  if(!d) return 'TBC';
+  const dt = new Date(d + 'T00:00:00');
+  if(short) return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}).toUpperCase();
+  return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}).toUpperCase();
+}
+function isPlayed(m){ return m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined; }
+function resultFor(m, side){
+  if(!isPlayed(m)) return null;
+  if(m.homeScore === m.awayScore) return 'draw';
+  const homeWon = m.homeScore > m.awayScore;
+  if(side === 'home') return homeWon ? 'win' : 'loss';
+  return homeWon ? 'loss' : 'win';
+}
+function resultClass(r){ return r === 'win' ? 'result-win' : (r === 'loss' ? 'result-loss' : ''); }
+
+function jerseyCode(j){
+  return j || 'Unknown';
+}
+
+// ---------- populate dropdowns from whatever's actually in the data ----------
+function uniqueSorted(arr, getter, numeric){
+  const vals = [...new Set(arr.map(getter).filter(v => v !== null && v !== undefined && v !== ''))];
+  if(numeric){
+    vals.sort((a,b) => b - a);
+  } else {
+    vals.sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric:true, sensitivity:'base'}));
+  }
+  return vals;
+}
+function fillSelect(sel, values, placeholder){
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${placeholder}</option>` + values.map(v => `<option value="${v}">${v}</option>`).join('');
+  if([...sel.options].some(o => o.value === cur)) sel.value = cur;
+}
+// When a team is selected, a jersey filter must match THAT team's own side, not whatever
+// the opponent wore that game.
+function matchesJerseyFilter(m){
+  if(!fJersey.value) return true;
+  if(fTeam.value){
+    if(m.home !== fTeam.value && m.away !== fTeam.value) return false;
+    const teamJersey = m.home === fTeam.value ? m.homeJersey : m.awayJersey;
+    return teamJersey === fJersey.value;
+  }
+  return m.homeJersey === fJersey.value || m.awayJersey === fJersey.value;
+}
+// Cross-filtering: each facet's own options are built from matches that satisfy every
+// OTHER active filter (so picking a team only leaves jerseys/seasons/etc it actually has).
+function facetPredicate(excludeKey){
+  return function(m){
+    if(hideTrial.checked && isTrialMatch(m)) return false;
+    if(excludeKey !== 'team' && fTeam.value && m.home !== fTeam.value && m.away !== fTeam.value) return false;
+    if(excludeKey !== 'season' && fSeason.value && m.season !== fSeason.value) return false;
+    if(excludeKey !== 'jersey' && !matchesJerseyFilter(m)) return false;
+    if(excludeKey !== 'round' && fRound.value && String(m.round) !== fRound.value) return false;
+    if(excludeKey !== 'theme' && fTheme.value && m.theme !== fTheme.value) return false;
+    if(excludeKey !== 'stadium' && fStadium.value && m.stadium !== fStadium.value) return false;
+    return true;
+  };
+}
+function populateFacets(){
+  const teams = uniqueSorted(MATCHES, m => m.home).concat(uniqueSorted(MATCHES, m => m.away));
+  const teamList = [...new Set(teams)].sort();
+  fillSelect(fTeam, teamList, 'Any team');
+
+  fillSelect(fSeason, uniqueSorted(MATCHES.filter(facetPredicate('season')), m => m.season), 'Any season');
+
+  const jerseyScope = MATCHES.filter(facetPredicate('jersey'));
+  const jerseyTeam = fTeam.value;
+  const jerseys = [...new Set(jerseyScope.flatMap(m => {
+    if(jerseyTeam) return [m.home === jerseyTeam ? m.homeJersey : null, m.away === jerseyTeam ? m.awayJersey : null];
+    return [m.homeJersey, m.awayJersey];
+  }).filter(Boolean))].sort();
+  fillSelect(fJersey, jerseys, 'Any jersey');
+
+  fillSelect(fRound, uniqueSorted(MATCHES.filter(facetPredicate('round')), m => m.round), 'Any round');
+  fillSelect(fTheme, uniqueSorted(MATCHES.filter(facetPredicate('theme')), m => m.theme), 'Any theme');
+  fillSelect(fStadium, uniqueSorted(MATCHES.filter(facetPredicate('stadium')), m => m.stadium), 'Any stadium');
+
+  const curA = fTeamA.value, curB = fTeamB.value;
+  fTeamA.innerHTML = teamList.map(t => `<option value="${t}">${t}</option>`).join('');
+  fTeamB.innerHTML = teamList.map(t => `<option value="${t}">${t}</option>`).join('');
+  if(teamList.includes(curA)) fTeamA.value = curA;
+  if(teamList.includes(curB)) fTeamB.value = curB;
+}
+
+function updateStatLine(){
+  document.getElementById('total-count').textContent = MATCHES.length;
+  document.getElementById('kit-count').textContent = MATCHES.filter(m => m.homeImg || m.awayImg).length;
+  const seasons = uniqueSorted(MATCHES, m => m.season);
+  if(seasons.length) document.getElementById('season-range').textContent = seasons.length === 1 ? seasons[0] : (seasons[seasons.length-1] + '–' + seasons[0]);
+}
+
+// ---------- filtering ----------
+function applyFilters(){
+  let rows;
+  if(mode === 'browse'){
+    rows = MATCHES.filter(m => {
+      if(hideTrial.checked && isTrialMatch(m)) return false;
+      if(fTeam.value && m.home !== fTeam.value && m.away !== fTeam.value) return false;
+      if(fSeason.value && m.season !== fSeason.value) return false;
+      if(!matchesJerseyFilter(m)) return false;
+      if(fRound.value && String(m.round) !== fRound.value) return false;
+      if(fTheme.value && m.theme !== fTheme.value) return false;
+      if(fStadium.value && m.stadium !== fStadium.value) return false;
+      return true;
+    });
+  } else {
+    const a = fTeamA.value, b = fTeamB.value;
+    rows = MATCHES.filter(m => (m.home === a && m.away === b) || (m.home === b && m.away === a));
+    rows = rows.filter(m => {
+      if(hideTrial.checked && isTrialMatch(m)) return false;
+      if(fJersey.value && m.homeJersey !== fJersey.value && m.awayJersey !== fJersey.value) return false;
+      if(fSeason.value && m.season !== fSeason.value) return false;
+      if(fStadium.value && m.stadium !== fStadium.value) return false;
+      if(fTheme.value && m.theme !== fTheme.value) return false;
+      return true;
+    });
+  }
+  filtered = rows;
+  activeIndex = 0;
+  if(filtered.length) renderMatchup(filtered[0]);
+  else matchupEl.innerHTML = `<p style="text-align:center;color:var(--text-dim);font-size:13.5px;padding:20px;">No matches found for this combination — try loosening a filter.</p>`;
+  renderList();
+  renderJerseyStats();
+}
+
+function setMode(m){
+  mode = m;
+  modeBrowseBtn.classList.toggle('active', m === 'browse');
+  modeH2hBtn.classList.toggle('active', m === 'h2h');
+  browseFiltersEl.style.display = m === 'browse' ? 'grid' : 'none';
+  h2hFiltersEl.style.display = m === 'h2h' ? 'grid' : 'none';
+  applyFilters();
+}
+modeBrowseBtn.addEventListener('click', () => setMode('browse'));
+modeH2hBtn.addEventListener('click', () => setMode('h2h'));
+
+[fTeam, fSeason, fJersey, fRound, fTheme, fStadium].forEach(el =>
+  el.addEventListener('change', () => { populateFacets(); applyFilters(); })
+);
+[fTeamA, fTeamB].forEach(el => el.addEventListener('change', applyFilters));
+hideTrial.addEventListener('change', () => { populateFacets(); applyFilters(); });
+
+clearBtn.addEventListener('click', () => {
+  [fTeam, fSeason, fJersey, fRound, fTheme, fStadium].forEach(el => el.value = '');
+  populateFacets();
+  applyFilters();
+});
+
+// ---------- rendering ----------
+function jerseySlot(team, jersey, img){
+  const hasImg = !!img;
+  return `
+    <div class="jersey-slot">
+      <div class="jersey-photo ${hasImg ? 'has-image' : 'empty'}">
+        ${hasImg
+          ? `<img src="${img}" alt="${team} ${jersey||''} jersey" loading="lazy" onerror="var p=this.parentElement;p.classList.remove('has-image');p.classList.add('empty');this.remove();p.insertAdjacentHTML('beforeend','<i class=&quot;ti ti-shirt-sport&quot;></i>');">`
+          : `<i class="ti ti-shirt-sport"></i>`}
+      </div>
+      <p class="no-photo-label">${hasImg ? '' : 'no jersey photo yet'}</p>
+      <p class="team-name">${team}</p>
+      <p class="jersey-tag">${jersey ? jersey + ' jersey' : 'jersey unknown'}</p>
+    </div>`;
+}
+
+function renderMatchup(m){
+  const played = isPlayed(m);
+  let scoreHtml;
+  if(played){
+    const hr = resultFor(m,'home'), ar = resultFor(m,'away');
+    scoreHtml = `<div class="score-tiles"><div class="tile ${hr}">${m.homeScore}</div><span class="tile-sep">&ndash;</span><div class="tile ${ar}">${m.awayScore}</div></div><p class="ft-label">${m.overtime ? 'Final (OT)' : 'Final'}</p>`;
+  } else {
+    scoreHtml = `<div class="vs-label">VS</div><p class="ft-label">Not yet played</p>`;
+  }
+  const roundLabel = m.round ? (isNaN(m.round) ? m.round : 'Round ' + m.round) : null;
+  const metaParts = [roundLabel, m.theme, m.stadium, fmtDate(m.date)].filter(Boolean);
+  const notesLine = m.notes ? `<p class="notes-line">${m.notes}</p>` : '';
+
+  matchupEl.innerHTML = `
+    <div class="matchup-grid">
+      ${jerseySlot(m.home, m.homeJersey, m.homeImg)}
+      <div class="score-block">${scoreHtml}</div>
+      ${jerseySlot(m.away, m.awayJersey, m.awayImg)}
+    </div>
+    <div class="meta-ticker">${metaParts.join(' • ')}${notesLine}</div>
+  `;
+}
+
+function renderList(){
+  if(filtered.length === 0){
+    listEl.innerHTML = `<div class="no-results">No matches found. Try loosening a filter.</div>`;
+    return;
+  }
+  listEl.innerHTML = filtered.map((m, i) => {
+    const played = isPlayed(m);
+    const hr = played ? resultFor(m,'home') : null;
+    const ar = played ? resultFor(m,'away') : null;
+    const roundShort = m.round ? (isNaN(m.round) ? m.round : 'R' + m.round) : '';
+    return `
+      <div class="row ${i===activeIndex?'active':''}" data-i="${i}" tabindex="0">
+        <span class="c-date">${fmtDate(m.date, true)}</span>
+        <span class="jcode c-hjersey" title="${m.homeJersey || 'Unknown'} jersey">${jerseyCode(m.homeJersey)}</span>
+        <span class="c-home ${resultClass(hr)}">${m.home}</span>
+        <span class="c-hs">${played ? m.homeScore : ''}</span>
+        <span class="c-dash">&ndash;</span>
+        <span class="c-as">${played ? m.awayScore : ''}</span>
+        <span class="c-away ${resultClass(ar)}">${m.away}</span>
+        <span class="jcode c-ajersey" title="${m.awayJersey || 'Unknown'} jersey">${jerseyCode(m.awayJersey)}</span>
+        <span class="c-round">${roundShort}</span>
+      </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('.row').forEach(row => {
+    row.addEventListener('click', () => {
+      activeIndex = parseInt(row.dataset.i);
+      renderMatchup(filtered[activeIndex]);
+      renderList();
+      matchupEl.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+}
+
+function renderJerseyStats(){
+  const team = mode === 'browse' ? fTeam.value : null;
+  if(!team){ statsEl.hidden = true; statsEl.innerHTML = ''; return; }
+
+  const teamMatches = MATCHES.filter(m => (m.home === team || m.away === team) && isPlayed(m));
+  const buckets = {};
+  teamMatches.forEach(m => {
+    const isHome = m.home === team;
+    const jersey = (isHome ? m.homeJersey : m.awayJersey) || 'Unknown';
+    if(!buckets[jersey]) buckets[jersey] = {gp:0,w:0,l:0,pf:0,pa:0};
+    const pf = isHome ? m.homeScore : m.awayScore;
+    const pa = isHome ? m.awayScore : m.homeScore;
+    buckets[jersey].gp++;
+    buckets[jersey].pf += pf;
+    buckets[jersey].pa += pa;
+    const r = resultFor(m, isHome ? 'home' : 'away');
+    if(r === 'win') buckets[jersey].w++;
+    else buckets[jersey].l++;
+  });
+
+  const rows = Object.keys(buckets).sort((a,b) => buckets[b].gp - buckets[a].gp);
+  if(rows.length === 0){ statsEl.hidden = true; statsEl.innerHTML = ''; return; }
+
+  const total = {gp:0,w:0,l:0,pf:0,pa:0};
+  rows.forEach(b => { for(const k in total) total[k] += buckets[b][k]; });
+
+  function rowHtml(label, s, isTotal){
+    const pd = s.pf - s.pa;
+    const pdClass = pd > 0 ? 'gd-pos' : (pd < 0 ? 'gd-neg' : '');
+    return `<tr class="${isTotal ? 'total-row' : ''}">
+      <td>${label}</td><td>${s.gp}</td><td>${s.w}</td><td>${s.l}</td>
+      <td>${s.pf}</td><td>${s.pa}</td><td class="${pdClass}">${pd > 0 ? '+' : ''}${pd}</td>
+    </tr>`;
+  }
+
+  statsEl.innerHTML = `
+    <button class="stats-toggle" id="stats-toggle" aria-expanded="false">
+      <span>${team} — jersey breakdown</span><i class="ti ti-chevron-down"></i>
+    </button>
+    <div class="stats-body" id="stats-body" hidden>
+      <table>
+        <thead><tr><th>Jersey</th><th>GP</th><th>W</th><th>L</th><th>PF</th><th>PA</th><th>PD</th></tr></thead>
+        <tbody>${rows.map(b => rowHtml(b, buckets[b], false)).join('')}${rowHtml('Total', total, true)}</tbody>
+      </table>
+    </div>`;
+  statsEl.hidden = false;
+
+  const toggle = document.getElementById('stats-toggle');
+  const body = document.getElementById('stats-body');
+  toggle.addEventListener('click', () => {
+    const open = !body.hidden;
+    body.hidden = open;
+    toggle.setAttribute('aria-expanded', String(!open));
+    toggle.classList.toggle('open', !open);
+  });
+}
+
+// ---------- init ----------
+populateFacets();
+updateStatLine();
+applyFilters();
+loadLiveData();
+
+(function(){
+  var btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  function applyIcon(theme){
+    btn.innerHTML = theme === 'light' ? '<i class="ti ti-sun"></i>' : '<i class="ti ti-moon"></i>';
+  }
+  applyIcon(document.documentElement.getAttribute('data-theme') || 'dark');
+  btn.addEventListener('click', function(){
+    var current = document.documentElement.getAttribute('data-theme') || 'dark';
+    var next = current === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('jerseydb-theme', next);
+    applyIcon(next);
+  });
+})();
+</script>
+</body>
+</html>
