@@ -711,7 +711,7 @@ function renderJerseyStats(){
   const team = mode === 'browse' ? fTeam.value : null;
   if(!team){ statsEl.hidden = true; statsEl.innerHTML = ''; return; }
 
-  const teamMatches = MATCHES.filter(m => (m.home === team || m.away === team) && isPlayed(m));
+  const teamMatches = MATCHES.filter(m => (m.home === team || m.away === team) && isPlayed(m) && (!fSeason.value || m.season === fSeason.value));
   const buckets = {};
   teamMatches.forEach(m => {
     const isHome = m.home === team;
@@ -744,7 +744,7 @@ function renderJerseyStats(){
 
   statsEl.innerHTML = `
     <button class="stats-toggle" id="stats-toggle" aria-expanded="false">
-      <span>${team} — jersey breakdown</span><i class="ti ti-chevron-down"></i>
+      <span>${team} — jersey breakdown${fSeason.value ? ' (' + fSeason.value + ')' : ''}</span><i class="ti ti-chevron-down"></i>
     </button>
     <div class="stats-body" id="stats-body" hidden>
       <table>
