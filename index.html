@@ -232,7 +232,7 @@
 
   <section class="jersey-stats" id="ladder-box">
     <button class="stats-toggle" id="ladder-toggle" aria-expanded="false">
-      <span>Jersey Ladder — All Teams</span><i class="ti ti-chevron-down"></i>
+      <span id="ladder-heading">Jersey Ladder — All Teams</span><i class="ti ti-chevron-down"></i>
     </button>
     <div class="stats-body" id="ladder-body" hidden>
       <div class="filters" style="grid-template-columns:200px;margin-bottom:14px;">
@@ -401,6 +401,7 @@ const ladderToggle = document.getElementById('ladder-toggle');
 const ladderBody = document.getElementById('ladder-body');
 const fLadderSeason = document.getElementById('f-ladder-season');
 const ladderTbody = document.getElementById('ladder-tbody');
+const ladderHeading = document.getElementById('ladder-heading');
 
 // Trial matches are marked by putting "Trial" (no number needed) in the Round column.
 function isTrialMatch(m){ return normalizeText(m.round) === 'trial'; }
@@ -637,6 +638,7 @@ function setMode(m){
   browseFiltersEl.style.display = m === 'browse' ? 'grid' : 'none';
   h2hFiltersEl.style.display = m === 'h2h' ? 'grid' : 'none';
   applyFilters();
+  renderJerseyLadder();
 }
 modeBrowseBtn.addEventListener('click', () => setMode('browse'));
 modeH2hBtn.addEventListener('click', () => setMode('h2h'));
@@ -644,7 +646,7 @@ modeH2hBtn.addEventListener('click', () => setMode('h2h'));
 [fTeam, fSeason, fRound, fTheme, fStadium].forEach(el =>
   el.addEventListener('change', () => { populateFacets(); applyFilters(); })
 );
-[fTeamA, fTeamB].forEach(el => el.addEventListener('change', applyFilters));
+[fTeamA, fTeamB].forEach(el => el.addEventListener('change', () => { applyFilters(); renderJerseyLadder(); }));
 hideTrial.addEventListener('change', () => { populateFacets(); applyFilters(); });
 
 clearBtn.addEventListener('click', () => {
@@ -737,7 +739,14 @@ function renderList(){
 // order matches the other trackers, not because the NBL itself uses it.
 function renderJerseyLadder(){
   const season = fLadderSeason.value;
-  const rows = MATCHES.filter(m => isPlayed(m) && (!season || m.season === season));
+  let rows = MATCHES.filter(m => isPlayed(m) && (!season || m.season === season));
+  if(mode === 'h2h'){
+    const a = fTeamA.value, b = fTeamB.value;
+    rows = rows.filter(m => (m.home === a && m.away === b) || (m.home === b && m.away === a));
+    ladderHeading.textContent = 'Jersey Ladder \u2014 ' + a + ' vs ' + b;
+  } else {
+    ladderHeading.textContent = 'Jersey Ladder \u2014 All Teams';
+  }
   const buckets = {};
   function bump(team, jersey, pf, pa, result){
     const key = team + '\u0001' + (jersey || 'Unknown');
