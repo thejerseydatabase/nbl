@@ -54,11 +54,11 @@
 
   .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px;}
   .h2h-row{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:12px;}
-  .filters select, .h2h-row select, .filters input{
+  .filters select, .h2h-row select, #f-h2h-season, .filters input{
     background:var(--surface);border:1px solid var(--line);color:var(--text);
     font-family:'Inter',sans-serif;font-size:13.5px;padding:10px 12px;border-radius:8px;outline:none;width:100%;
   }
-  .filters select:focus, .h2h-row select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,184,75,0.15);}
+  .filters select:focus, .h2h-row select:focus, #f-h2h-season:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,184,75,0.15);}
   .vs-sep{font-family:'Anton',sans-serif;color:var(--text-dim);font-size:16px;}
   /* Jersey filter: a checkbox dropdown instead of a plain select, so
      someone tracking (say) every Alternate a team's worn doesn't have to
@@ -219,10 +219,13 @@
     <select id="f-stadium" aria-label="Stadium"><option value="">Any stadium</option></select>
   </div>
 
-  <div id="h2h-filters" class="h2h-row" style="display:none;">
-    <select id="f-teamA" aria-label="Team A"></select>
-    <span class="vs-sep">VS</span>
-    <select id="f-teamB" aria-label="Team B"></select>
+  <div id="h2h-filters" style="display:none;">
+    <div class="h2h-row">
+      <select id="f-teamA" aria-label="Team A"></select>
+      <span class="vs-sep">VS</span>
+      <select id="f-teamB" aria-label="Team B"></select>
+    </div>
+    <select id="f-h2h-season" aria-label="Season" style="margin-top:10px;width:100%;max-width:220px;"><option value="">All seasons</option></select>
   </div>
 
   <div class="clear-row">
@@ -395,6 +398,7 @@ const fTheme = document.getElementById('f-theme');
 const fStadium = document.getElementById('f-stadium');
 const fTeamA = document.getElementById('f-teamA');
 const fTeamB = document.getElementById('f-teamB');
+const fH2hSeason = document.getElementById('f-h2h-season');
 const clearBtn = document.getElementById('clear-filters');
 const hideTrial = document.getElementById('hide-trial');
 const ladderToggle = document.getElementById('ladder-toggle');
@@ -578,6 +582,12 @@ function populateFacets(){
   if(teamList.includes(curA)) fTeamA.value = curA;
   if(teamList.includes(curB)) fTeamB.value = curB;
 
+  // Its own season filter, defaulting to "All seasons" — separate from
+  // Browse mode's f-season (which defaults to the latest season) so
+  // switching to Head to Head never silently inherits a season filter
+  // with no visible control to change or clear it.
+  fillSelect(fH2hSeason, uniqueSorted(MATCHES, m => m.season).reverse(), 'All seasons');
+
   renderJerseyLadder();
 }
 
@@ -608,7 +618,7 @@ function applyFilters(){
     rows = rows.filter(m => {
       if(hideTrial.checked && isTrialMatch(m)) return false;
       if(selectedJerseys.size && !selectedJerseys.has(m.homeJersey) && !selectedJerseys.has(m.awayJersey)) return false;
-      if(fSeason.value && m.season !== fSeason.value) return false;
+      if(fH2hSeason.value && m.season !== fH2hSeason.value) return false;
       if(fStadium.value && m.stadium !== fStadium.value) return false;
       if(fTheme.value && m.theme !== fTheme.value) return false;
       return true;
@@ -636,7 +646,7 @@ function setMode(m){
   modeBrowseBtn.classList.toggle('active', m === 'browse');
   modeH2hBtn.classList.toggle('active', m === 'h2h');
   browseFiltersEl.style.display = m === 'browse' ? 'grid' : 'none';
-  h2hFiltersEl.style.display = m === 'h2h' ? 'grid' : 'none';
+  h2hFiltersEl.style.display = m === 'h2h' ? 'block' : 'none';
   applyFilters();
   renderJerseyLadder();
 }
@@ -647,10 +657,11 @@ modeH2hBtn.addEventListener('click', () => setMode('h2h'));
   el.addEventListener('change', () => { populateFacets(); applyFilters(); })
 );
 [fTeamA, fTeamB].forEach(el => el.addEventListener('change', () => { applyFilters(); renderJerseyLadder(); }));
+fH2hSeason.addEventListener('change', applyFilters);
 hideTrial.addEventListener('change', () => { populateFacets(); applyFilters(); });
 
 clearBtn.addEventListener('click', () => {
-  [fTeam, fSeason, fRound, fTheme, fStadium].forEach(el => el.value = '');
+  [fTeam, fSeason, fRound, fTheme, fStadium, fH2hSeason].forEach(el => el.value = '');
   selectedJerseys.clear();
   populateFacets();
   setDefaultStatus();
