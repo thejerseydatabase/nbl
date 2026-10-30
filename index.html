@@ -460,6 +460,12 @@ function renderStats(rows){
   document.getElementById('tracked-pct').textContent = s.trackedPct;
   document.getElementById('kit-count').textContent = s.withPhoto;
   document.getElementById('photo-pct').textContent = s.photoPct;
+  // Currently-showing line's own season range - was never set, leaving the
+  // <b id="season-range"> between its two middots empty (looked like a
+  // stray double dot: "fixtures · · played").
+  const seasons = uniqueSorted(rows, m => m.season);
+  const rangeEl = document.getElementById('season-range');
+  if(rangeEl) rangeEl.textContent = seasons.length ? (seasons.length === 1 ? seasons[0] : (seasons[seasons.length-1] + '\u2013' + seasons[0])) : '';
 }
 
 async function loadLiveData(){
